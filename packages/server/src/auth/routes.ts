@@ -8,6 +8,7 @@ import { changePasswordHandler, changePasswordValidator } from './changepassword
 import { clientInfoHandler } from './clientinfo';
 import { exchangeHandler, exchangeValidator } from './exchange';
 import { externalCallbackHandler } from './external';
+import { firebaseHandler, firebaseValidator } from './firebase';
 import { googleHandler, googleValidator } from './google';
 import { loginHandler, loginValidator } from './login';
 import { meHandler } from './me';
@@ -42,6 +43,7 @@ authRouter.post('/resetpassword', resetPasswordValidator, validateRecaptcha(), r
 authRouter.post('/setpassword', setPasswordValidator, setPasswordHandler);
 authRouter.post('/verifyemail', verifyEmailValidator, verifyEmailHandler);
 authRouter.post('/google', googleValidator, googleHandler);
+authRouter.post('/firebase', firebaseValidator, firebaseHandler);
 authRouter.post('/exchange', exchangeValidator, exchangeHandler);
 authRouter.post('/revoke', authenticateRequest, revokeValidator, revokeHandler);
 authRouter.post('/preauthorize', authenticateRequest, preAuthorizeValidator, preAuthorizeHandler);

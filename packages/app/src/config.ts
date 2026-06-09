@@ -7,6 +7,10 @@ export interface MedplumAppConfig {
   recaptchaSiteKey?: string;
   registerEnabled?: boolean | string;
   awsTextractEnabled?: boolean | string;
+  firebaseApiKey?: string;
+  firebaseAuthDomain?: string;
+  firebaseProjectId?: string;
+  firebaseAppId?: string;
 }
 
 const config: MedplumAppConfig = {
@@ -16,6 +20,10 @@ const config: MedplumAppConfig = {
   recaptchaSiteKey: import.meta.env?.RECAPTCHA_SITE_KEY,
   registerEnabled: import.meta.env?.MEDPLUM_REGISTER_ENABLED,
   awsTextractEnabled: import.meta.env?.MEDPLUM_AWS_TEXTRACT_ENABLED,
+  firebaseApiKey: import.meta.env?.FIREBASE_API_KEY,
+  firebaseAuthDomain: import.meta.env?.FIREBASE_AUTH_DOMAIN,
+  firebaseProjectId: import.meta.env?.FIREBASE_PROJECT_ID,
+  firebaseAppId: import.meta.env?.FIREBASE_APP_ID,
 };
 
 export function getConfig(): MedplumAppConfig {

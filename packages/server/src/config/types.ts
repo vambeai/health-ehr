@@ -58,6 +58,8 @@ export interface MedplumServerConfig {
   bullmq?: MedplumBullmqConfig;
   googleClientId?: string;
   googleClientSecret?: string;
+  /** Firebase project ID used to verify Firebase ID tokens on /auth/firebase */
+  firebaseProjectId?: string;
   recaptchaSiteKey?: string;
   recaptchaSecretKey?: string;
   maxJsonSize: string;

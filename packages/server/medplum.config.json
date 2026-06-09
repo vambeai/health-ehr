@@ -1,12 +1,13 @@
 {
   "port": 8103,
   "baseUrl": "http://localhost:8103/",
-  "appBaseUrl": "http://localhost:3000/",
+  "appBaseUrl": "http://localhost:3002/",
   "binaryStorage": "file:./binary/",
   "storageBaseUrl": "http://localhost:8103/storage/",
   "supportEmail": "\"Medplum\" <support@medplum.com>",
   "googleClientId": "397236612778-c0b5tnjv98frbo1tfuuha5vkme3cmq4s.apps.googleusercontent.com",
   "googleClientSecret": "",
+  "firebaseProjectId": "vambe-auth",
   "recaptchaSiteKey": "6LfHdsYdAAAAAC0uLnnRrDrhcXnziiUwKd8VtLNq",
   "recaptchaSecretKey": "6LfHdsYdAAAAAH9dN154jbJ3zpQife3xaiTvPChL",
   "botLambdaRoleArn": "",
@@ -17,14 +18,14 @@
   "introspectionEnabled": true,
   "database": {
     "host": "localhost",
-    "port": 5432,
+    "port": 5433,
     "dbname": "medplum",
     "username": "medplum",
     "password": "medplum"
   },
   "redis": {
     "host": "localhost",
-    "port": 6379,
+    "port": 6380,
     "password": "medplum"
   },
   "bullmq": {

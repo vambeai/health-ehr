@@ -9,7 +9,8 @@
   },
   "moduleFileExtensions": ["ts", "tsx", "js", "jsx", "json", "node"],
   "moduleNameMapper": {
-    "\\.css$": "identity-obj-proxy"
+    "\\.css$": "identity-obj-proxy",
+    "^firebase/(app|auth)$": "<rootDir>/src/test-utils/firebase-mock.ts"
   },
   "testMatch": ["**/src/**/*.test.ts", "**/src/**/*.test.tsx"],
   "setupFilesAfterEnv": ["./src/test.setup.ts"],

@@ -2,16 +2,14 @@
 // SPDX-License-Identifier: Apache-2.0
 import { MockClient } from '@medplum/mock';
 import { MedplumProvider } from '@medplum/react';
+import { sendPasswordResetEmail } from 'firebase/auth';
 import { MemoryRouter } from 'react-router';
 import { ResetPasswordPage } from './ResetPasswordPage';
-import { getConfig } from './config';
-import type { UserEvent } from './test-utils/render';
-import { render, screen, userEvent } from './test-utils/render';
+import { act, fireEvent, render, screen } from './test-utils/render';
 
 const medplum = new MockClient();
 
-function setup(): UserEvent {
-  const user = userEvent.setup();
+function setup(): void {
   render(
     <MemoryRouter>
       <MedplumProvider medplum={medplum}>
@@ -19,58 +17,45 @@ function setup(): UserEvent {
       </MedplumProvider>
     </MemoryRouter>
   );
-
-  return user;
 }
 
 describe('ResetPasswordPage', () => {
-  const grecaptchaResolved = jest.fn();
-
-  beforeAll(() => {
-    Object.defineProperty(globalThis, 'grecaptcha', {
-      value: {
-        ready(callback: () => void): void {
-          callback();
-        },
-        execute(): Promise<string> {
-          grecaptchaResolved();
-          return Promise.resolve('token');
-        },
-      },
-    });
-  });
-
-  beforeEach(() => {
-    jest.resetModules();
-  });
-
   afterEach(() => {
     jest.clearAllMocks();
   });
 
   test('Renders', () => {
     setup();
-    expect(screen.getByRole('button', { name: 'Reset Password' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Send reset email' })).toBeInTheDocument();
   });
 
-  test('Submit success with recaptcha site key', async () => {
-    getConfig().recaptchaSiteKey = 'recaptchasitekey';
-    const user = setup();
+  test('Submit success', async () => {
+    setup();
 
-    await user.type(screen.getByLabelText('Email *'), 'admin@example.com');
-    await user.click(screen.getByRole('button', { name: 'Reset Password' }));
+    await act(async () => {
+      fireEvent.change(screen.getByLabelText('Email *'), { target: { value: 'admin@example.com' } });
+    });
 
-    expect(grecaptchaResolved).toHaveBeenCalled();
-    expect(screen.getByText('password reset email will be sent', { exact: false })).toBeInTheDocument();
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: 'Send reset email' }));
+    });
+
+    expect(sendPasswordResetEmail).toHaveBeenCalledWith(expect.anything(), 'admin@example.com');
+    expect(await screen.findByText('password reset email has been sent', { exact: false })).toBeInTheDocument();
   });
 
-  test('Submit success without recaptcha site key', async () => {
-    getConfig().recaptchaSiteKey = '';
-    const user = setup();
+  test('Submit error', async () => {
+    (sendPasswordResetEmail as jest.Mock).mockRejectedValueOnce(new Error('auth/invalid-email'));
+    setup();
 
-    await user.type(screen.getByLabelText('Email *'), 'admin@example.com');
-    await user.click(screen.getByRole('button', { name: 'Reset Password' }));
-    expect(grecaptchaResolved).not.toHaveBeenCalled();
-    expect(screen.getByText('password reset email will be sent', { exact: false })).toBeInTheDocument();
+    await act(async () => {
+      fireEvent.change(screen.getByLabelText('Email *'), { target: { value: 'unknown@example.com' } });
+    });
+
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: 'Send reset email' }));
+    });
+
+    expect(await screen.findByText('auth/invalid-email')).toBeInTheDocument();
   });
 });

@@ -16,13 +16,15 @@ services:
       - medplum-postgres-data:/var/lib/postgresql/data
     command: postgres -c config_file=/usr/local/etc/postgres/postgres.conf
     ports:
-      - '5432:5432'
+      # Host port 5433: a local postgres already occupies 5432 on this machine
+      - '5433:5432'
   redis:
     image: redis:7
     restart: unless-stopped # for production usage, consider using 'always'
     command: redis-server --requirepass medplum
     ports:
-      - '6379:6379'
+      # Host port 6380: a local redis-server already occupies 6379 on this machine
+      - '6380:6379'
 
 volumes:
   medplum-postgres-data:

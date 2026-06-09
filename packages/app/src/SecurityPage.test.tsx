@@ -31,21 +31,10 @@ describe('SecurityPage', () => {
     expect(screen.getByText('Sessions')).toBeInTheDocument();
   });
 
-  test('Click change password', async () => {
+  test('Password section removed (auth is managed by Firebase)', async () => {
     await setup();
-    await act(async () => {
-      fireEvent.click(screen.getByRole('button', { name: 'Change password' }));
-    });
-    expect(screen.getByLabelText('Old password *')).toBeInTheDocument();
-    expect(screen.getByLabelText('New password *')).toBeInTheDocument();
-  });
-
-  test('Click MFA enroll', async () => {
-    await setup();
-    await act(async () => {
-      fireEvent.click(screen.getByRole('button', { name: 'Enroll' }));
-    });
-    expect(screen.getByText('Multi Factor Auth Setup')).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Change password' })).not.toBeInTheDocument();
+    expect(screen.queryByText('Multi Factor Auth')).not.toBeInTheDocument();
   });
 
   test('Revoke session', async () => {

@@ -1,17 +1,17 @@
 // SPDX-FileCopyrightText: Copyright Orangebot, Inc. and Medplum contributors
 // SPDX-License-Identifier: Apache-2.0
-import { Title } from '@mantine/core';
-import { getAppName, Logo, SignInForm, useMedplumProfile } from '@medplum/react';
+import { Text, Title } from '@mantine/core';
+import { getAppName, Logo, useMedplumProfile } from '@medplum/react';
 import type { JSX } from 'react';
 import { useCallback, useEffect } from 'react';
-import { useNavigate, useSearchParams } from 'react-router';
-import { getConfig, isRegisterEnabled } from './config';
+import { Navigate, useNavigate, useSearchParams } from 'react-router';
+import { isRegisterEnabled } from './config';
+import { FirebaseSignInForm } from './FirebaseSignInForm';
 
 export function SignInPage(): JSX.Element {
   const profile = useMedplumProfile();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
-  const config = getConfig();
 
   const navigateToNext = useCallback(() => {
     // only redirect to next if it is a pathname to avoid redirecting
@@ -26,26 +26,25 @@ export function SignInPage(): JSX.Element {
     }
   }, [profile, searchParams, navigateToNext]);
 
+  if (searchParams.get('project') === 'new') {
+    // New projects are created through the register flow
+    return <Navigate to="/register" replace />;
+  }
+
   return (
-    <SignInForm
+    <FirebaseSignInForm
+      projectId={searchParams.get('project') || undefined}
       onSuccess={() => navigateToNext()}
       onForgotPassword={() => navigate('/resetpassword')?.catch(console.error)}
       onRegister={isRegisterEnabled() ? () => navigate('/register')?.catch(console.error) : undefined}
-      googleClientId={config.googleClientId}
-      login={searchParams.get('login') || undefined}
-      projectId={searchParams.get('project') || undefined}
     >
       <Logo size={32} />
-      {searchParams.get('project') !== 'new' && (
-        <Title order={3} py="lg" ta="center">
-          Sign in to {getAppName()}
-        </Title>
-      )}
-      {searchParams.get('project') === 'new' && (
-        <Title order={3} py="lg" ta="center">
-          Sign in again to create a new project
-        </Title>
-      )}
-    </SignInForm>
+      <Title order={3} ta="center">
+        Sign in to {getAppName()}
+      </Title>
+      <Text size="sm" ta="center" c="dimmed">
+        Use your Vambe account
+      </Text>
+    </FirebaseSignInForm>
   );
 }

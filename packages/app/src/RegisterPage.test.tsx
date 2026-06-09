@@ -1,18 +1,16 @@
 // SPDX-FileCopyrightText: Copyright Orangebot, Inc. and Medplum contributors
 // SPDX-License-Identifier: Apache-2.0
 import type { MedplumClient } from '@medplum/core';
-import { MockClient } from '@medplum/mock';
+import { DrAliceSmith, MockClient } from '@medplum/mock';
 import { MedplumProvider } from '@medplum/react';
 import crypto from 'crypto';
 import { MemoryRouter } from 'react-router';
 import { TextEncoder } from 'util';
 import { AppRoutes } from './AppRoutes';
 import { getConfig } from './config';
-import type { UserEvent } from './test-utils/render';
-import { act, render, screen, userEvent } from './test-utils/render';
+import { act, fireEvent, render, screen, waitFor } from './test-utils/render';
 
-async function setup(medplum: MedplumClient): Promise<UserEvent> {
-  const user = userEvent.setup();
+async function setup(medplum: MedplumClient): Promise<void> {
   await act(async () => {
     render(
       <MemoryRouter initialEntries={['/register']} initialIndex={0}>
@@ -22,8 +20,34 @@ async function setup(medplum: MedplumClient): Promise<UserEvent> {
       </MemoryRouter>
     );
   });
+}
 
-  return user;
+function mockRegisterClient(responses: unknown[]): MockClient {
+  const client = new MockClient();
+  client.getProfile = jest.fn(() => undefined) as never;
+  client.startPkce = jest.fn(() =>
+    Promise.resolve({ codeChallengeMethod: 'S256' as const, codeChallenge: 'xyz' })
+  ) as never;
+  const post = jest.fn();
+  for (const response of responses) {
+    if (response instanceof Error) {
+      post.mockRejectedValueOnce(response);
+    } else {
+      post.mockResolvedValueOnce(response);
+    }
+  }
+  client.post = post as never;
+  client.processCode = jest.fn(() => Promise.resolve(DrAliceSmith)) as never;
+  return client;
+}
+
+async function fillForm(): Promise<void> {
+  await act(async () => {
+    fireEvent.change(screen.getByLabelText('Clinic name *'), { target: { value: 'Test Clinic' } });
+    fireEvent.change(screen.getByLabelText('Your name *'), { target: { value: 'George Washington' } });
+    fireEvent.change(screen.getByLabelText('Email *'), { target: { value: 'george@example.com' } });
+    fireEvent.change(screen.getByLabelText('Password *'), { target: { value: 'password' } });
+  });
 }
 
 describe('RegisterPage', () => {
@@ -43,54 +67,82 @@ describe('RegisterPage', () => {
 
   test('Renders', async () => {
     const medplum = new MockClient();
-    medplum.getProfile = jest.fn(() => undefined) as any;
+    medplum.getProfile = jest.fn(() => undefined) as never;
     await setup(medplum);
-    expect(screen.getByRole('button', { name: 'Register Account' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Create clinic' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Continue with Google' })).toBeInTheDocument();
   });
 
-  test('Redirect if signed in', async () => {
+  test('Blocked if already signed in with a role', async () => {
     const medplum = new MockClient();
     await setup(medplum);
-    expect(screen.getByText('Sign in again to create a new project')).toBeInTheDocument();
-  });
-
-  test('Submit success', async () => {
-    const medplum = new MockClient();
-    medplum.getProfile = jest.fn(() => undefined) as any;
-    medplum.startNewUser = jest.fn(() => Promise.resolve({ login: '1' }));
-    const user = await setup(medplum);
-
-    Object.defineProperty(global, 'grecaptcha', {
-      value: {
-        ready(callback: () => void): void {
-          callback();
-        },
-        execute(): Promise<string> {
-          return Promise.resolve('token');
-        },
-      },
-    });
-
-    await user.type(screen.getByLabelText('First name *'), 'George');
-    await user.type(screen.getByLabelText('Last name *'), 'Washington');
-    await user.type(screen.getByLabelText('Email *'), 'george@example.com');
-    await user.type(screen.getByLabelText('Password *'), 'password');
-
-    await user.click(screen.getByRole('button'));
-
-    await user.type(screen.getByLabelText('Project Name *'), 'Test Project');
-
-    await user.click(screen.getByRole('button'));
+    expect(screen.getByText('You already have access')).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Create clinic' })).not.toBeInTheDocument();
   });
 
   test('Register disabled', async () => {
     getConfig().registerEnabled = false;
 
     const medplum = new MockClient();
-    medplum.getProfile = jest.fn(() => undefined) as any;
-    medplum.startNewUser = jest.fn(() => Promise.resolve({ login: '1' }));
+    medplum.getProfile = jest.fn(() => undefined) as never;
     await setup(medplum);
 
-    expect(screen.getByText('New projects are disabled on this server.')).toBeInTheDocument();
+    expect(screen.getByText('New clinic registration is disabled on this server.')).toBeInTheDocument();
+  });
+
+  test('Clinic name too short', async () => {
+    const medplum = mockRegisterClient([]);
+    await setup(medplum);
+
+    await act(async () => {
+      fireEvent.change(screen.getByLabelText('Clinic name *'), { target: { value: 'abc' } });
+      fireEvent.change(screen.getByLabelText('Your name *'), { target: { value: 'George Washington' } });
+      fireEvent.change(screen.getByLabelText('Email *'), { target: { value: 'george@example.com' } });
+      fireEvent.change(screen.getByLabelText('Password *'), { target: { value: 'password' } });
+    });
+
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: 'Create clinic' }));
+    });
+
+    expect(await screen.findByText('Clinic name must be at least 4 characters')).toBeInTheDocument();
+    expect(medplum.post).not.toHaveBeenCalled();
+  });
+
+  test('Submit success', async () => {
+    const medplum = mockRegisterClient([
+      new Error('User not found'), // guard: no existing access
+      { login: 'login-1' }, // auth/firebase with createUser + new project
+      { login: 'login-1', code: 'code-1' }, // auth/newproject
+    ]);
+    await setup(medplum);
+    await fillForm();
+
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: 'Create clinic' }));
+    });
+
+    await waitFor(() => expect(medplum.processCode).toHaveBeenCalledWith('code-1'));
+    expect(medplum.post).toHaveBeenCalledWith(
+      'auth/firebase',
+      expect.objectContaining({ createUser: true, projectId: 'new' })
+    );
+    expect(medplum.post).toHaveBeenCalledWith('auth/newproject', {
+      login: 'login-1',
+      projectName: 'Test Clinic',
+    });
+  });
+
+  test('Blocked if the account already has access', async () => {
+    const medplum = mockRegisterClient([{ login: 'login-1', code: 'code-1' }]);
+    await setup(medplum);
+    await fillForm();
+
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: 'Create clinic' }));
+    });
+
+    expect(await screen.findByText('This account already has access. Please sign in instead.')).toBeInTheDocument();
+    expect(medplum.processCode).not.toHaveBeenCalled();
   });
 });
